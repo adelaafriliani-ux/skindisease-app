@@ -1,0 +1,30 @@
+{
+  "adelaafrln": {
+    "password": "e165ceaf269d82338e9cab6119e2c8e91a04fd2b2a6dde17483014db3a8ade93",
+    "role": "admin",
+    "nama_lengkap": "",
+    "tanggal_lahir": "",
+    "email": ""
+  },
+  "puskesmastambun": {
+    "password": "a6be1d38d8b2c18cee95ebccb498bd6cb4459fbf8857283a6b6a06052f9cb3cd",
+    "role": "admin",
+    "nama_lengkap": "puskesmas tambun",
+    "tanggal_lahir": "",
+    "email": "pkmtambun@gmail.com"
+  },
+  "dediajah": {
+    "password": "6a06e799110e15fe788ddc4dc62967d5e01a8acb8266ba24d8b13148664c4139",
+    "role": "user",
+    "nama_lengkap": "",
+    "tanggal_lahir": "",
+    "email": ""
+  },
+  "Ariariaa": {
+    "password": "43fd9db4e1751ea719e2cb30f7c124490bb8930745d79c7a3a3717783ba6aeea",
+    "role": "petugas",
+    "nama_lengkap": "Ari D",
+    "tanggal_lahir": "",
+    "email": "aridari@gmail.com"
+  }
+}
