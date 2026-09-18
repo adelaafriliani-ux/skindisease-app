@@ -24,7 +24,7 @@ except ImportError:
 # KONFIGURASI HALAMAN
 # ============================================================
 st.set_page_config(
-    page_title="Klasifikasi Penyakit Kulit",
+    page_title="Aplikasi Skrining Awal Penyakit Kulit",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -656,7 +656,7 @@ if not st.session_state.authenticated:
         if st.session_state.auth_mode == "login":
             md(f"""
             <div class="login-icon-badge">{badge_content}</div>
-            <div class="login-title">Klasifikasi Penyakit Kulit</div>
+            <div class="login-title">Aplikasi Skrining Penyakit Kulit</div>
             <div class="login-subtitle">Masuk untuk mengakses aplikasi</div>
             """)
 
@@ -737,7 +737,7 @@ if not st.session_state.authenticated:
                 st.session_state.auth_mode = "login"
                 st.rerun()
 
-        md('<div class="login-footer-note">Skripsi · Klasifikasi Penyakit Kulit · MobileNetV2</div>')
+        md('<div class="login-footer-note">Aplikasi Skrining Awal Penyakit Kulit | Puskesmas Tambun</div>')
 
     st.stop()
 
@@ -1180,8 +1180,8 @@ if "confirm_delete" not in st.session_state:
 # ============================================================
 md("""
 <div class="main-header">
-    <h1>🩺 Klasifikasi Penyakit Kulit</h1>
-    <p>Aplikasi bantu skrining awal penyakit kulit untuk kebutuhan layanan Puskesmas</p>
+    <h1>🩺 Selamat Datang!</h1>
+    <p>Aplikasi bantu skrining awal penyakit kulit untuk kebutuhan layanan Puskesmas Tambun</p>
 </div>
 """)
 
