@@ -12,6 +12,7 @@ import re
 import uuid
 import csv
 from datetime import datetime
+from supabase import create_client
 
 try:
     from fpdf import FPDF, XPos, YPos
@@ -492,9 +493,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# AUTENTIKASI: LOGIN + DAFTAR (akun tersimpan lokal di users.json)
+# KONEKSI SUPABASE (database permanen, gantiin users.json & riwayat_pasien.json)
 # ============================================================
-USERS_FILE = os.path.join(BASE_DIR, "users.json")
+@st.cache_resource
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase = get_supabase_client()
 
 # Username yang berperan sebagai "pemilik" akses Administrator. Akun dengan
 # username ini otomatis jadi admin tanpa perlu persetujuan (karena dialah
@@ -503,10 +510,9 @@ USERS_FILE = os.path.join(BASE_DIR, "users.json")
 SUPERADMIN_USERNAME = "puskesmastambun"
 
 def _normalize_user_record(uname, record):
-    """users.json versi lama cuma menyimpan password sebagai string biasa
-    (tanpa role, nama lengkap, dll). Data lama itu dikonversi otomatis di
-    sini setiap kali dibaca, supaya tidak perlu migrasi manual dan akun
-    lama tetap bisa login seperti biasa.
+    """Data user lama (format lawas) dikonversi otomatis di sini setiap kali
+    dibaca, supaya tidak perlu migrasi manual dan akun lama tetap bisa login
+    seperti biasa.
 
     Role yang dikenali: "admin", "petugas", "pending_petugas", "user".
     Default untuk akun baru/lama yang tidak punya role tersimpan adalah
@@ -518,7 +524,7 @@ def _normalize_user_record(uname, record):
     if role not in ("admin", "petugas", "pending_petugas", "user"):
         role = "user"
     # Akun dengan username SUPERADMIN_USERNAME selalu berstatus admin,
-    # tidak peduli apa yang tersimpan di file (mencegah salah konfigurasi).
+    # tidak peduli apa yang tersimpan di database (mencegah salah konfigurasi).
     if uname.strip().lower() == SUPERADMIN_USERNAME:
         role = "admin"
     return {
@@ -530,18 +536,23 @@ def _normalize_user_record(uname, record):
     }
 
 def load_users():
-    if not os.path.exists(USERS_FILE):
-        return {}
     try:
-        with open(USERS_FILE, "r") as f:
-            raw = json.load(f)
+        res = supabase.table("users").select("*").execute()
+        raw = {row["username"]: row for row in res.data}
     except Exception:
         return {}
     return {uname: _normalize_user_record(uname, rec) for uname, rec in raw.items()}
 
 def save_users(users):
-    with open(USERS_FILE, "w") as f:
-        json.dump(users, f, indent=2)
+    """Menimpa seluruh isi tabel users dengan isi dict 'users' -- perilakunya
+    sama seperti versi lama yang menimpa seluruh users.json."""
+    try:
+        supabase.table("users").delete().neq("username", "").execute()
+        if users:
+            rows = [{"username": uname, **rec} for uname, rec in users.items()]
+            supabase.table("users").insert(rows).execute()
+    except Exception:
+        pass
 
 def hash_password(password):
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
@@ -555,7 +566,7 @@ def is_valid_email(email):
 
 def get_user_role(username, users=None):
     """'admin', 'petugas', 'pending_petugas', atau 'user'. Mengambil ulang
-    dari file kalau 'users' tidak diberikan, supaya selalu dapat status
+    dari database kalau 'users' tidak diberikan, supaya selalu dapat status
     terbaru."""
     if users is None:
         users = load_users()
@@ -563,37 +574,35 @@ def get_user_role(username, users=None):
     return rec["role"] if rec else "user"
 
 # ============================================================
-# RIWAYAT PASIEN (tersimpan lokal di riwayat_pasien.json)
+# RIWAYAT PASIEN (tersimpan permanen di tabel riwayat_pasien Supabase)
 # ============================================================
-RIWAYAT_FILE = os.path.join(BASE_DIR, "riwayat_pasien.json")
-
 def load_riwayat():
-    if not os.path.exists(RIWAYAT_FILE):
-        return []
     try:
-        with open(RIWAYAT_FILE, "r") as f:
-            return json.load(f)
+        res = supabase.table("riwayat_pasien").select("*").order("id").execute()
+        return res.data
     except Exception:
         return []
 
 def save_riwayat_entry(entry):
-    """Tambahkan satu record riwayat baru ke file, tanpa menimpa yang lama."""
-    data = load_riwayat()
-    data.append(entry)
-    with open(RIWAYAT_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    """Tambahkan satu record riwayat baru ke tabel, tanpa menimpa yang lama."""
+    try:
+        supabase.table("riwayat_pasien").insert(entry).execute()
+    except Exception:
+        pass
 
 def update_riwayat_entry_by_index(row_index, updates):
     """Perbarui satu record riwayat yang sudah ada, berdasarkan posisinya di
-    file (bukan berdasarkan nomor_tiket) -- supaya tetap benar sekalipun ada
-    dua record dengan nomor_tiket yang kebetulan sama (data lama peninggalan
-    bug nomor tiket sebelum diperbaiki)."""
+    hasil load_riwayat() (bukan berdasarkan nomor_tiket) -- supaya tetap benar
+    sekalipun ada dua record dengan nomor_tiket yang kebetulan sama (data lama
+    peninggalan bug nomor tiket sebelum diperbaiki)."""
     data = load_riwayat()
     if 0 <= row_index < len(data):
-        data[row_index].update(updates)
-        with open(RIWAYAT_FILE, "w") as f:
-            json.dump(data, f, indent=2)
-        return True
+        record_id = data[row_index]["id"]
+        try:
+            supabase.table("riwayat_pasien").update(updates).eq("id", record_id).execute()
+            return True
+        except Exception:
+            return False
     return False
 
 BULAN_INDO = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
