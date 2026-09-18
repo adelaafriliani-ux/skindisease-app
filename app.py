@@ -695,9 +695,7 @@ if not st.session_state.authenticated:
             daftar_sebagai_petugas = st.checkbox(
                 "Daftar sebagai Petugas",
                 key="register_as_petugas",
-                help="Akun akan tetap bisa langsung dipakai seperti biasa sebagai "
-                     "User, tapi akses Petugas (memverifikasi & mengedit semua "
-                     "riwayat rujukan yang masuk) baru aktif setelah disetujui "
+                help="Akun petugas baru aktif setelah disetujui "
                      "oleh Administrator.",
             )
             register_clicked = st.button("Daftar", use_container_width=True)
@@ -724,7 +722,7 @@ if not st.session_state.authenticated:
                     if role == "pending_petugas":
                         st.success(
                             "Akun berhasil dibuat! Kamu bisa langsung login sebagai "
-                            "User biasa. Akses Petugas akan aktif setelah disetujui "
+                            "User. Akses Petugas akan aktif setelah disetujui "
                             "oleh Administrator."
                         )
                     else:
