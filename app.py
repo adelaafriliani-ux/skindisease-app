@@ -576,6 +576,12 @@ def get_user_role(username, users=None):
 # ============================================================
 # RIWAYAT PASIEN (tersimpan permanen di tabel riwayat_pasien Supabase)
 # ============================================================
+from supabase import create_client, Client
+
+supabase: Client = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_KEY"],
+
 def load_riwayat():
     try:
         res = supabase.table("riwayat_pasien").select("*").order("id").execute()
@@ -590,20 +596,10 @@ def save_riwayat_entry(entry):
     except Exception:
         pass
 
-def update_riwayat_entry_by_index(row_index, updates):
-    """Perbarui satu record riwayat yang sudah ada, berdasarkan posisinya di
-    hasil load_riwayat() (bukan berdasarkan nomor_tiket) -- supaya tetap benar
-    sekalipun ada dua record dengan nomor_tiket yang kebetulan sama (data lama
-    peninggalan bug nomor tiket sebelum diperbaiki)."""
-    data = load_riwayat()
-    if 0 <= row_index < len(data):
-        record_id = data[row_index]["id"]
-        try:
-            supabase.table("riwayat_pasien").update(updates).eq("id", record_id).execute()
-            return True
-        except Exception:
-            return False
-    return False
+def update_riwayat_entry_by_id(row_id, updates):
+    """Perbarui satu record riwayat berdasarkan kolom id di Supabase."""
+    supabase.table("riwayat_pasien").update(updates).eq("id", row_id).execute()
+    return True
 
 BULAN_INDO = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
               "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
