@@ -1346,6 +1346,7 @@ try:
                         "keluhan": m_keluhan.strip() or "-",
                         "predicted_class": "Rujukan",
                         "confidence": "-",
+                        "kategori": "Rujukan Manual",
                         "urgensi_label": m_urgensi_info["label"],
                         "pdf_base64": m_pdf_b64,
                     })
@@ -1507,7 +1508,7 @@ try:
                                     "keluhan": keluhan_final,
                                     "predicted_class": matched_key,
                                     "confidence": round(confidence, 1),
-                                    "urgensi_label": urgensi["label"],
+                                    "kategori": detail["kategori"],
                                     "pdf_base64": _pdf_b64,
                                 })
                                 if _ok:
@@ -1938,7 +1939,7 @@ try:
                             st.markdown(f"**No. HP:** {r.get('no_hp', '-')}")
                         with c2:
                             st.markdown(f"**Kondisi:** {r['predicted_class']}")
-                            st.markdown(f"**Kategori:** {r.get('kategori', '-')}")
+                            st.markdown(f"**Kategori:** {r['kategori']}")
                             st.markdown(f"**Confidence:** {r['confidence']}%")
                         st.markdown(f"**Keluhan:** {r['keluhan']}")
 
@@ -1995,11 +1996,9 @@ try:
                                 # mencerminkan data terbaru, bukan cuma data di
                                 # halaman riwayat. Record hasil rujukan manual
                                 # (tanpa foto) dan hasil deteksi AI dibuat ulang
-                                # lewat fungsi PDF yang berbeda -- dibedakan lewat
-                                # predicted_class (bukan kategori, karena kolom
-                                # 'kategori' sudah tidak lagi tersimpan di database).
+                                # lewat fungsi PDF yang berbeda.
                                 if FPDF_AVAILABLE:
-                                    if r.get("predicted_class") == "Rujukan":
+                                    if r.get("kategori") == "Rujukan Manual":
                                         try:
                                             pdf_bytes_baru = generate_referral_pdf_manual(
                                                 nomor_tiket=r["nomor_tiket"],
@@ -2009,7 +2008,7 @@ try:
                                                 no_hp=updates["no_hp"],
                                                 keluhan=updates["keluhan"],
                                                 kondisi_awal=r.get("predicted_class", ""),
-                                                urgensi_info={"label": r.get("urgensi_label", "Menunggu penilaian tenaga medis")},
+                                                urgensi_info={"label": r.get("Menunggu penilaian tenaga medis")},
                                                 catatan_tambahan="",
                                                 petugas=r.get("username", "-"),
                                             )
