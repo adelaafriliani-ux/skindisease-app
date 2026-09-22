@@ -584,26 +584,31 @@ def load_riwayat():
         return []
 
 def save_riwayat_entry(entry):
-    """Tambahkan satu record riwayat baru ke tabel, tanpa menimpa yang lama."""
+    """Tambahkan satu record riwayat baru ke tabel, tanpa menimpa yang lama.
+    Mengembalikan (True, None) jika sukses, (False, pesan_error) jika gagal
+    -- supaya pemanggil bisa menampilkan alasan gagalnya ke pengguna, bukan
+    diam-diam dianggap berhasil."""
     try:
         supabase.table("riwayat_pasien").insert(entry).execute()
-    except Exception:
-        pass
+        return True, None
+    except Exception as e:
+        return False, str(e)
 
 def update_riwayat_entry_by_index(row_index, updates):
     """Perbarui satu record riwayat yang sudah ada, berdasarkan posisinya di
     hasil load_riwayat() (bukan berdasarkan nomor_tiket) -- supaya tetap benar
     sekalipun ada dua record dengan nomor_tiket yang kebetulan sama (data lama
-    peninggalan bug nomor tiket sebelum diperbaiki)."""
+    peninggalan bug nomor tiket sebelum diperbaiki).
+    Mengembalikan (True, None) jika sukses, (False, pesan_error) jika gagal."""
     data = load_riwayat()
     if 0 <= row_index < len(data):
         record_id = data[row_index]["id"]
         try:
             supabase.table("riwayat_pasien").update(updates).eq("id", record_id).execute()
-            return True
-        except Exception:
-            return False
-    return False
+            return True, None
+        except Exception as e:
+            return False, str(e)
+    return False, "Data tidak ditemukan"
 
 BULAN_INDO = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
               "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
@@ -1330,7 +1335,7 @@ try:
                         except Exception as _e:
                             st.warning(f"Data pasien tetap disimpan, tapi PDF gagal dibuat: {_e}")
 
-                    save_riwayat_entry({
+                    _ok, _err = save_riwayat_entry({
                         "nomor_tiket": m_tiket,
                         "waktu": m_waktu,
                         "username": st.session_state.username,
@@ -1345,16 +1350,19 @@ try:
                         "urgensi_label": m_urgensi_info["label"],
                         "pdf_base64": m_pdf_b64,
                     })
-                    st.success(f"✅ Surat rujukan manual berhasil dibuat & disimpan. No. Tiket: {m_tiket}")
-                    if m_pdf_b64:
-                        st.download_button(
-                            "⬇️ Unduh Surat Rujukan (PDF)",
-                            data=base64.b64decode(m_pdf_b64),
-                            file_name=f"surat_rujukan_{m_tiket}.pdf",
-                            mime="application/pdf",
-                            key=f"dl_manual_{m_tiket}",
-                            use_container_width=True,
-                        )
+                    if _ok:
+                        st.success(f"✅ Surat rujukan manual berhasil dibuat & disimpan. No. Tiket: {m_tiket}")
+                        if m_pdf_b64:
+                            st.download_button(
+                                "⬇️ Unduh Surat Rujukan (PDF)",
+                                data=base64.b64decode(m_pdf_b64),
+                                file_name=f"surat_rujukan_{m_tiket}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_manual_{m_tiket}",
+                                use_container_width=True,
+                            )
+                    else:
+                        st.error(f"❌ Gagal menyimpan ke database: {_err}")
             st.stop()
 
         if not MODEL_LOADED:
@@ -1489,7 +1497,7 @@ try:
                                 hp_final = st.session_state.get("pasien_hp", "").strip() or "-"
                                 keluhan_final = st.session_state.get("pasien_keluhan", "").strip() or "-"
                                 _pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8") if pdf_bytes else None
-                                save_riwayat_entry({
+                                _ok, _err = save_riwayat_entry({
                                     "nomor_tiket": nomor_tiket,
                                     "waktu": waktu_periksa,
                                     "username": st.session_state.username,
@@ -1504,8 +1512,11 @@ try:
                                     "urgensi_label": urgensi["label"],
                                     "pdf_base64": _pdf_b64,
                                 })
-                                st.session_state[_riwayat_key] = True
-                                st.rerun()
+                                if _ok:
+                                    st.session_state[_riwayat_key] = True
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Gagal menyimpan ke database: {_err}")
 
                         if not FPDF_AVAILABLE:
                             st.caption("💡 Unduh PDF perlu library 'fpdf2'. Jalankan: pip install fpdf2")
@@ -2026,12 +2037,13 @@ try:
                                             except Exception:
                                                 pass  # data pasien tetap diperbarui walau PDF gagal dibuat ulang
 
-                                if update_riwayat_entry_by_index(r["_row_index"], updates):
+                                _ok, _err = update_riwayat_entry_by_index(r["_row_index"], updates)
+                                if _ok:
                                     st.session_state[_edit_flag_key] = False
                                     st.success("✅ Data pasien berhasil diperbarui.")
                                     st.rerun()
                                 else:
-                                    st.error("Gagal menyimpan perubahan. Coba lagi.")
+                                    st.error(f"Gagal menyimpan perubahan: {_err}")
 
         elif sub == "Evaluasi Bulanan":
             if get_user_role(st.session_state.username) not in ("admin", "petugas"):
